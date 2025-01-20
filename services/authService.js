@@ -3,6 +3,8 @@ const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const jwt = require("jsonwebtoken");
+
 
 // إرسال OTP
 exports.sendOTP = asyncHandler(async (req, res) => {
