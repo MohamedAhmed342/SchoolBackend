@@ -5,7 +5,6 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 
-
 // إرسال OTP
 exports.sendOTP = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -23,13 +22,13 @@ exports.sendOTP = asyncHandler(async (req, res) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: "myasd200210@gmail.com",
+      pass: "arvgivqqmvbziios",
     },
   });
 
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: "myasd200210@gmail.com",
     to: email,
     subject: "Password Reset OTP",
     text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
