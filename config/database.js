@@ -1,7 +1,8 @@
 const { default: mongoose } = require("mongoose");
 
 const dbConniction = () => {
-  mongoose.connect(process.env.DB_URI).then((conn) => {
+  //mongodb+srv://GPUser:QVdwshVs84a1NAeE@cluster0.hj20t.mongodb.net/SchoolSystemDB
+  mongoose.connect('mongodb+srv://GPUser:QVdwshVs84a1NAeE@cluster0.hj20t.mongodb.net/SchoolSystemDB').then((conn) => {
     console.log(`Database Connected: ${conn.connection.host}`);
   })
   .catch((err) => {
@@ -11,6 +12,6 @@ const dbConniction = () => {
 };
 
 module.exports = dbConniction;
-
+ 
 //schooluser
 //01120858144mm
