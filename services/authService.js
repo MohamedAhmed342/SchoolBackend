@@ -28,7 +28,7 @@ exports.sendOTP = asyncHandler(async (req, res) => {
   });
 
   await transporter.sendMail({
-    from: '"School Admin <myasd200210@gmail.com>"',
+    from: '"School Admin" <myasd200210@gmail.com>',
     to: email,
     subject: "Password Reset OTP",
     text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
