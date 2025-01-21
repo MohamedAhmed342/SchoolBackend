@@ -13,6 +13,10 @@ const postRoute = require("./routes/postRoute")
 const commentRoute = require("./routes/commentRoute")
 const userRoute = require("./routes/userRoute")
 const cros = require("cors")
+const attendanceRoutes = require("./routes/attendanceRoute");
+const examResultRoutes = require("./routes/examResultRoute");
+const subjectRoutes = require("./routes/subjectRoute");
+const classRoutes = require("./routes/classRoute");
 
 
 // Connect to DB
@@ -38,6 +42,10 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/posts/", postRoute )
 app.use("/api/v1/comments/", commentRoute )
 app.use("/api/v1/user/", userRoute)
+app.use("/api/v1/attendance/", attendanceRoutes)
+app.use("/api/v1/exam-results/", examResultRoutes)
+app.use("/api/v1/subjects/", subjectRoutes)
+app.use("/api/v1/classes/", classRoutes)
 
 
 // Handle all other requests with 404 error

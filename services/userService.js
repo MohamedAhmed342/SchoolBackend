@@ -1,45 +1,81 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
-const Post = require("../models/postModel"); 
+const Post = require("../models/postModel");
 const Comment = require("../models/commentModel");
 
-// Update user
+// Update user (Admin only for students and teachers)
 exports.updateUser = asyncHandler(async (req, res) => {
-  // From Token
   const loggedInUserId = req.user.id; // Id User From Token
-  const isAdmin = req.user.isAdmin;  // is that User Admin ?
+  const userRole = req.user.role; // User Role From Token
 
-  // If Admin --> Can Edit & If The Same User 
-  if (loggedInUserId === req.params.id || isAdmin) {
-  // You can not edit isAdmin Properity Unless You Really Admin
-    if ("isAdmin" in req.body && !isAdmin) {
-      return res.status(403).json("You are not allowed to update isAdmin field!");
-    }
-
-    if (req.body.password) {
-      const salt = await bcrypt.genSalt(10);
-      req.body.password = await bcrypt.hash(req.body.password, salt);
-    }
-
-    const user = await User.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
-    res.status(200).json({ message: "Account has been updated", user });
-  } else {
-    res.status(403).json("You can update only your account!");
+  // Admins only can update users
+  if (userRole !== "admin") {
+    return res.status(403).json("Access denied. Only admins can update users.");
   }
+
+  // Check if updating a student
+  if (req.body.role === "student" && req.body.studentInfo) {
+    // Validate student-specific fields
+    const { dateOfBirth, grade, phoneNumber, fatherNumber, motherNumber, bloodGroup } = req.body.studentInfo;
+
+    if (dateOfBirth && isNaN(Date.parse(dateOfBirth))) {
+      return res.status(400).json("Invalid Date of Birth format.");
+    }
+    if (grade && !["Primary", "Preparatory", "Secondary", "High School", "College"].includes(grade)) {
+      return res.status(400).json("Invalid grade value.");
+    }
+    if (phoneNumber && (!/^\d{10}$/.test(phoneNumber))) {
+      return res.status(400).json("Invalid phone number format.");
+    }
+    if (fatherNumber && (!/^\d{10}$/.test(fatherNumber))) {
+      return res.status(400).json("Invalid father's phone number format.");
+    }
+    if (motherNumber && (!/^\d{10}$/.test(motherNumber))) {
+      return res.status(400).json("Invalid mother's phone number format.");
+    }
+    if (bloodGroup && !["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].includes(bloodGroup)) {
+      return res.status(400).json("Invalid blood group value.");
+    }
+  }
+
+  // Check if updating a teacher
+  if (req.body.role === "teacher" && req.body.teacherInfo) {
+    const { subjects, classes, phoneNumber } = req.body.teacherInfo;
+
+    if (phoneNumber && (!/^\d{10}$/.test(phoneNumber))) {
+      return res.status(400).json("Invalid phone number format.");
+    }
+    if (subjects && !Array.isArray(subjects)) {
+      return res.status(400).json("Subjects must be an array.");
+    }
+    if (classes && !Array.isArray(classes)) {
+      return res.status(400).json("Classes must be an array.");
+    }
+  }
+
+  // Hash password if being updated
+  if (req.body.password) {
+    const salt = await bcrypt.genSalt(10);
+    req.body.password = await bcrypt.hash(req.body.password, salt);
+  }
+
+  const user = await User.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
+
+  if (!user) {
+    return res.status(404).json("User not found.");
+  }
+
+  res.status(200).json({ message: "User has been updated successfully", user });
 });
 
-
-
-// Delete user
+// Delete user (Admin only)
 exports.deleteUser = asyncHandler(async (req, res) => {
   try {
-    // Check if the user is an admin
-    if (!req.user || !req.user.isAdmin) {
+    if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied. Admins only." });
     }
 
-    // Find the user to delete
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -73,23 +109,48 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   }
 });
 
-
 // Get user
 exports.getUser = asyncHandler(async (req, res) => {
   try {
+    // العثور على المستخدم بناءً على الـ ID
     const user = await User.findById(req.params.id).populate({
-      path: "posts", 
-      options: { sort: { createdAt: -1 } }, 
+      path: "posts",
+      options: { sort: { createdAt: -1 } },
     });
 
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
+    // إزالة كلمة المرور وبعض البيانات الحساسة
     const { password, updatedAt, ...other } = user._doc;
 
-    res.status(200).json({
-      user: other,
+    // التحقق من الدور وصلاحيات الوصول
+    if (req.user.role === "admin") {
+      // إذا كان المستخدم أدمن، يمكنه رؤية كل البيانات
+      return res.status(200).json({
+        user: other,
+      });
+    }
+
+    if (req.user.id === req.params.id) {
+      // إذا كان المستخدم يطلب بياناته الخاصة، يمكنه رؤية كل البيانات
+      return res.status(200).json({
+        user: other,
+      });
+    }
+
+    // إذا كان المستخدم شخصًا آخر، يتم تحديد البيانات المسموح بها فقط
+    const limitedData = {
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      level: user.level || null,
+      phoneNumber: user.studentInfo?.phoneNumber || user.teacherInfo?.phoneNumber || null,
+    };
+
+    return res.status(200).json({
+      user: limitedData,
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch user data", error: err.message });

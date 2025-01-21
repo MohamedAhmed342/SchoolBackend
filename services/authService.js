@@ -46,11 +46,6 @@ exports.verifyOTP = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "User not found" });
   }
 
-  console.log("DB OTP:", user.otp);
-  console.log("Provided OTP:", otp);
-  console.log("OTP Expiry:", user.otpExpiresAt);
-  console.log("Current Time:", Date.now());
-
   if (user.otp !== otp || user.otpExpiresAt < Date.now()) {
     return res.status(400).json({ message: "Invalid or expired OTP" });
   }
@@ -84,16 +79,21 @@ exports.resetPassword = asyncHandler(async (req, res) => {
 });
 
 // Register
+// Register
 exports.register = asyncHandler(async (req, res) => {
-  // checks if user is admin
-  if (!req.user || !req.user.isAdmin) {
+  if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied. Admins only." });
   }
 
-  const { username, email, password, isAdmin } = req.body;
+  const { username, email, password, role, level, studentInfo, teacherInfo } = req.body;
 
-  if (!username || !email || !password) {
+  if (!username || !email || !password || !role) {
     return res.status(400).json({ message: "All fields are required." });
+  }
+
+  // التحقق من الحقول المطلوبة للطلاب
+  if (role === "student" && !level) {
+    return res.status(400).json({ message: "Level is required for students." });
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -103,8 +103,42 @@ exports.register = asyncHandler(async (req, res) => {
     username,
     email,
     password: hashedPassword,
-    isAdmin: isAdmin || false, 
+    role,
+    level: role === "student" ? level : undefined, // إضافة الـ level إذا كان المستخدم طالبًا
   });
+
+  // Add student-specific info
+  if (role === "student" && studentInfo) {
+    const { dateOfBirth, grade, phoneNumber, fatherNumber, motherNumber, bloodGroup } = studentInfo;
+
+    if (!dateOfBirth || !grade || !phoneNumber || !fatherNumber || !motherNumber || !bloodGroup) {
+      return res.status(400).json({ message: "All student info fields are required." });
+    }
+
+    newUser.studentInfo = {
+      dateOfBirth,
+      grade,
+      phoneNumber,
+      fatherNumber,
+      motherNumber,
+      bloodGroup,
+    };
+  }
+
+  // Add teacher-specific info
+  if (role === "teacher" && teacherInfo) {
+    const { subjects, classes, phoneNumber } = teacherInfo;
+
+    if (!subjects || !classes || !phoneNumber) {
+      return res.status(400).json({ message: "All teacher info fields are required." });
+    }
+
+    newUser.teacherInfo = {
+      subjects,
+      classes,
+      phoneNumber,
+    };
+  }
 
   try {
     const user = await newUser.save();
@@ -114,7 +148,10 @@ exports.register = asyncHandler(async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        isAdmin: user.isAdmin,
+        role: user.role,
+        level: user.level || null,
+        studentInfo: user.studentInfo || null,
+        teacherInfo: user.teacherInfo || null,
       },
     });
   } catch (err) {
@@ -140,25 +177,21 @@ exports.login = asyncHandler(async (req, res) => {
   }
 
   const token = jwt.sign(
-    { id: user._id, isAdmin: user.isAdmin },
+    { id: user._id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );
 
-
-  const response=({
+  const response = {
     message: "Login successful",
     token,
     user: {
       id: user._id,
       username: user.username,
       email: user.email,
+      role: user.role,
     },
-  });
+  };
 
-  if (user.isAdmin) {
-    response.user.isAdmin = user.isAdmin;
-  }
   res.status(200).json(response);
-
 });

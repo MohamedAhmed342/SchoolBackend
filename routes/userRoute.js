@@ -1,5 +1,5 @@
 const express = require("express");
-const verifyToken = require('../middlewares/authMiddleware')
+const verifyToken = require("../middlewares/authMiddleware");
 const {
   updateUser,
   deleteUser,
@@ -15,14 +15,18 @@ const {
 } = require("../utils/validators/userValidator");
 
 const router = express.Router();
+
+// Middleware للتحقق من التوكن
 router.use(verifyToken);
 
+// Route لتحديث المستخدم
 router
   .route("/:id")
-  .put(updateUserValidator, updateUser)
-  .delete(deleteUserValidator, deleteUser)
-  .get(getUserValidator, getUser);
+  .put(updateUserValidator, updateUser) // تحديث بيانات المستخدم
+  .delete(deleteUserValidator, deleteUser) // حذف المستخدم
+  .get(getUserValidator, getUser); // جلب بيانات المستخدم
 
+// Routes للتفاعل مع المتابعين (معلقة في الوقت الحالي)
 // router
 //   .route("/:id/follow")
 //   .put(followUserValidator, followUser);
